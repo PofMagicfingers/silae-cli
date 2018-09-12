@@ -9,7 +9,7 @@
     "prettier": "prettier",
     "prettier-all": "prettier --write 'src/**/*.js' '*.js' '*.json' 'config/*.js' 'config/*.json'"
   },
-  "author": "",
+  "author": "Pof Magicfingers",
   "license": "ISC",
   "devDependencies": {
     "babel-core": "^6.26.3",
