@@ -1,52 +1,84 @@
-const ArgumentParser = require('argparse').ArgumentParser;
+const ArgumentParser = require("argparse").ArgumentParser;
 const process = require("process");
 const fs = require("fs");
 const path = require("path");
 
-require("babel-register");
-require("babel-polyfill");
-const Silae = require("./lib/silae");
+const Silae = require("silae");
 
 var parser = new ArgumentParser({
-  version: '0.0.1',
-  addHelp:true,
-  description: 'Silae CLI'
+  version: "0.0.1",
+  addHelp: true,
+  description: "Silae CLI"
 });
 
-parser.addArgument(
-  [ 'username' ],
-  { }
-);
+parser.addArgument(["username"], {});
 
-parser.addArgument(
-  [ 'password' ],
-  { }
-);
+parser.addArgument(["password"], {});
+
+parser.addArgument(["--dest"], {
+  help: "Destination folder (default: current directory)",
+  metavar: "folder",
+  dest: "destFolder",
+  defaultValue: process.cwd()
+});
 
 var args = parser.parseArgs();
+args.destFolder = path.resolve(process.cwd(), args.destFolder);
 
-const main = async () => {
-    console.log("Login...");
-    const userData = await Silae.login(args.username, args.password);
+fs.access(args.destFolder, fs.constants.W_OK, function(err) {
+  if (err) {
+    console.error("can't write to folder: " + args.destFolder);
+    process.exit(403);
+  }
+
+  console.log("Login...");
+  Silae.login(args.username, args.password).then(userData => {
     console.log("Fetching bulletins...");
-    const bulletins = await Silae.getBulletins(userData);
-    if(bulletins.length > 0) {
-        console.log("Fetching last bulletin...");
-        const last = bulletins.sort(function(a,b){
-            return new Date(b.date) - new Date(a.date);
-        })[0];
+    Silae.getBulletins(userData).then(bulletins => {
+      if (bulletins.length > 0) {
+        console.log("Fetching bulletins for the last 12 months...");
 
-        const bulletin = await Silae.getBulletin(userData, last.id);
-        const fullPath = path.resolve(process.cwd(), `./${last.date.toISOString().slice(0,7)}.pdf`);
+        Promise.all(
+          bulletins
+            .filter(function(a) {
+              return a.date > +new Date() - 372 * 24 * 60 * 60 * 1000;
+            })
+            .map(
+              bul =>
+                new Promise((resolve, reject) => {
+                  Silae.getBulletin(userData, bul.id).then(bulletin => {
+                    const fullPath = path.resolve(
+                      args.destFolder,
+                      `./${bul.date.toISOString().slice(0, 10)}.pdf`
+                    );
 
-        fs.writeFile(fullPath, bulletin,  "binary", function(err) {
-            if(err) {
-                console.log(err);
-            } else {
-                console.log(`The file was saved at : ${fullPath} !`);
-            }
-        });
-    }
-};
-
-main();
+                    fs.writeFile(fullPath, bulletin, "binary", function(err) {
+                      if (err) {
+                        console.log(err);
+                        reject(err);
+                      } else {
+                        resolve(fullPath);
+                      }
+                    });
+                  }, reject);
+                })
+            )
+        ).then(
+          files => {
+            console.log("Sucessfully saved bulletins to : ");
+            files.forEach(f => console.log("\t - " + f));
+            process.exit(0);
+          },
+          err => {
+            console.error("error occured");
+            console.error(err);
+            process.exit(500);
+          }
+        );
+      } else {
+        console.log("No bulletins found");
+        process.exit(0);
+      }
+    });
+  });
+});
