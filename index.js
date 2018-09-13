@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const ArgumentParser = require("argparse").ArgumentParser;
 const process = require("process");
 const fs = require("fs");
@@ -8,7 +10,8 @@ const Silae = require("silae");
 var parser = new ArgumentParser({
   version: "0.0.1",
   addHelp: true,
-  description: "Silae CLI"
+  description: "Silae CLI",
+  prog: "silae"
 });
 
 parser.addArgument(["username"], {});
