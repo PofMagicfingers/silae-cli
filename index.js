@@ -52,7 +52,12 @@ fs.access(args.destFolder, fs.constants.W_OK, function(err) {
                   Silae.getBulletin(userData, bul.id).then(bulletin => {
                     const fullPath = path.resolve(
                       args.destFolder,
-                      `./${bul.date.toISOString().slice(0, 10)}.pdf`
+                      `./${bul.date.getFullYear()}-${String(
+                        bul.date.getMonth() + 1
+                      ).padStart(2, "0")}-${String(bul.date.getDate()).padStart(
+                        2,
+                        "0"
+                      )}.pdf`
                     );
 
                     fs.writeFile(fullPath, bulletin, "binary", function(err) {
